@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useActionState } from "react";
 
 import { currencyFormatter } from "../util/formatting";
 import useHttp from '../hooks/useHttp.js';
@@ -22,7 +22,11 @@ export default function Checkout() {
   const cartCtx = useContext(CartContex);
   const userProgressCtx = useContext(UserProgressContext);
 
-  const { data, isLoading: isSending, error, sendRequest, clearData } = useHttp('http://localhost:3000/orders', requestConfig);
+  const { 
+    data,
+    error, 
+    sendRequest,
+    clearData } = useHttp('http://localhost:3000/orders', requestConfig);
 
 
   const cartTotal = cartCtx.items.reduce(
@@ -40,18 +44,20 @@ export default function Checkout() {
     clearData();
   }
 
-  async function checkoutAction(fd) {
+  async function checkoutAction(prevState, fd) {
     const customerData = Object.fromEntries(fd.entries());
 
     await sendRequest(
       JSON.stringify({
         order: {
           items: cartCtx.items,
-          customer: customerData
+          customer: customerData,
         },
       })
     );
   }
+
+  const [formState, formAction, isSending] = useActionState(checkoutAction, null);
 
   let action = (
     <>
@@ -63,7 +69,7 @@ export default function Checkout() {
   if (isSending){
     action = <span>Sending order data...</span>
   }
-  
+
   if (data && !error) {
     return <Modal open={userProgressCtx.progress === "checkout"} onClose={handleFinish}>
       <h2>Success!</h2>
@@ -78,7 +84,7 @@ export default function Checkout() {
 
   return (
     <Modal open={userProgressCtx.progress === "checkout"} onClose={handleClose}>
-      <form action={checkoutAction}>
+      <form action={formAction}>
         <h2>Checkout</h2>
         <p>Total Amount: {currencyFormatter.format(cartTotal)} </p>
         <Input label="Full name" type="text" id="name" />
